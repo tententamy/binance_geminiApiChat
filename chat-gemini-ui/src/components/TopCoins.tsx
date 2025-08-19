@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { socket } from "../socket";
+import axios from "axios";
 
 type Coin = {
   s: string; // symbol
   c: string; // last price
   P: string; // 24h %
-  Q?: string; // volume (optional)
+  Q?: string; // volume
 };
 
 function formatNumber(n: string | number, fraction = 2) {
@@ -18,31 +19,45 @@ function formatNumber(n: string | number, fraction = 2) {
 export default function TopCoins() {
   const [coins, setCoins] = useState<Coin[]>([]);
 
-useEffect(() => {
-  const handleTickers = (raw: any) => {
-      console.log("📩 tickers raw:", raw);  // ✅ log để check có nhận được không
-    // Binance socket có thể trả về object, ép về array
-    const list: Coin[] = Array.isArray(raw) ? raw : Object.values(raw);
+  useEffect(() => {
+  let isMounted = true;
 
-    // Sắp xếp theo volume (nếu có Q), rồi lấy 10 coin top
+  // ✅ Step 1: fetch dữ liệu cũ từ REST API khi load trang
+  const fetchInitial = async () => {
+    try {
+      const res = await axios.get<Coin[]>("http://localhost:3000/api/binance/top");
+      if (isMounted) setCoins(res.data);
+    } catch (err) {
+      console.error("❌ Fetch initial top coins error:", err);
+    }
+  };
+
+  fetchInitial();
+
+  // ✅ Step 2: realtime socket cập nhật thêm dữ liệu mới
+  const handleTickers = (raw: any) => {
+    console.log("📩 tickers raw:", raw);
+
+    const list: Coin[] = Array.isArray(raw) ? raw : Object.values(raw);
     const sorted = list.sort((a: any, b: any) => Number(b.Q) - Number(a.Q));
-    setCoins(sorted.slice(0, 10));
+
+    if (isMounted) setCoins(sorted.slice(0, 10));
   };
 
   socket.on("tickers", handleTickers);
 
   return () => {
+    isMounted = false;
     socket.off("tickers", handleTickers);
   };
 }, []);
-
 
 
   return (
     <div className="h-full flex flex-col bg-white shadow-md rounded-lg p-4">
       <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
         🔥 Top 10 Coins{" "}
-        <span className="text-sm text-gray-500">(realtime)</span>
+        <span className="text-sm text-gray-500">(history + realtime)</span>
       </h2>
       <div className="overflow-y-auto flex-1">
         <table className="w-full text-sm border-collapse">
