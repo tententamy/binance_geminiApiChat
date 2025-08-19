@@ -1,96 +1,79 @@
 import { useEffect, useState } from "react";
-import ReactApexChart from "react-apexcharts";
+import { socket } from "../socket";
 import axios from "axios";
+import ReactApexChart from "react-apexcharts";
 
-type CandleData = [number, number, number, number, number]; 
-// [timestamp, open, high, low, close]
+type Props = { symbol: string };
 
-export default function CoinChart({ symbol = "BTCUSDT" }: { symbol?: string }) {
-  const [candles, setCandles] = useState<CandleData[]>([]);
-  const [maSeries, setMaSeries] = useState<any[]>([]);
-
-  // Hàm tính Moving Average
-  function calculateMA(data: CandleData[], period: number) {
-    const result: { x: number; y: number }[] = [];
-    for (let i = period - 1; i < data.length; i++) {
-      const slice = data.slice(i - period + 1, i + 1);
-      const avg =
-        slice.reduce((sum, c) => sum + c[4], 0) / period; // close price trung bình
-      result.push({ x: data[i][0], y: avg });
-    }
-    return result;
-  }
+export default function CoinChart({ symbol }: Props) {
+  const [series, setSeries] = useState<any[]>([{ name: symbol, data: [] }]);
 
   useEffect(() => {
-    async function fetchData() {
-      const res = await axios.get(
-        `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=5m&limit=100`
-      );
-       const data = res.data as any[]; // 👈 ép về any[]
-       
-      const formatted: CandleData[] = data.map((c: any) => [
-        c[0], // timestamp
-        parseFloat(c[1]), // open
-        parseFloat(c[2]), // high
-        parseFloat(c[3]), // low
-        parseFloat(c[4]), // close
-      ]);
+    let isMounted = true;
 
-      setCandles(formatted);
+    // 1. Load dữ liệu lịch sử
+    const fetchHistory = async () => {
+      try {
+        const res = await axios.get(
+          `http://localhost:3000/api/binance/klines?symbol=${symbol}&interval=1m&limit=100`
+        );
+        const data = res.data as any[];
 
-      // Tính MA(20)
-      const ma20 = calculateMA(formatted, 20);
-      setMaSeries([{ name: "MA20", data: ma20 }]);
-    }
+        const formatted = data.map((d: any) => ({
+          x: new Date(d.time),  // thay vì d[0]
+          y: [
+            parseFloat(d.open),
+            parseFloat(d.high),
+            parseFloat(d.low),
+            parseFloat(d.close),
+          ],
+        }));
 
-    fetchData();
-    const interval = setInterval(fetchData, 15000);
-    return () => clearInterval(interval);
+        if (isMounted) {
+          setSeries([{ name: symbol, data: formatted }]);
+        }
+      } catch (err) {
+        console.error("Fetch history error:", err);
+      }
+    };
+
+    fetchHistory();
+
+    // 2. Subscribe realtime
+    socket.emit("subscribeKline", symbol);
+
+    socket.on(`kline:${symbol}`, (k) => {
+      const newPoint = {
+        x: Number(k.t),
+        y: [Number(k.o), Number(k.h), Number(k.l), Number(k.c)],
+      };
+
+      setSeries((prev) => {
+        if (!prev.length) return [{ name: symbol, data: [newPoint] }];
+
+        // ✅ merge realtime vào history
+        const updated = [...prev[0].data, newPoint].slice(-200);
+        return [{ name: symbol, data: updated }];
+      });
+    });
+
+    return () => {
+      isMounted = false;
+      socket.emit("unsubscribeKline", symbol);
+      socket.off(`kline:${symbol}`);
+    };
   }, [symbol]);
-
-  const options: ApexCharts.ApexOptions = {
-    chart: {
-      type: "candlestick",
-      height: 400,
-      toolbar: { show: true },
-    },
-    title: {
-      text: `${symbol} Candlestick + MA(20)`,
-      align: "left",
-    },
-    xaxis: {
-      type: "datetime",
-    },
-    yaxis: {
-      tooltip: { enabled: true },
-    },
-    tooltip: {
-      shared: true,
-      custom: function ({ dataPointIndex }) {
-        return `
-          <div style="padding:5px;">
-            <b>${new Date(
-              candles[dataPointIndex]?.[0]
-            ).toLocaleTimeString()}</b><br/>
-            Open: ${candles[dataPointIndex]?.[1]} <br/>
-            High: ${candles[dataPointIndex]?.[2]} <br/>
-            Low: ${candles[dataPointIndex]?.[3]} <br/>
-            Close: ${candles[dataPointIndex]?.[4]} <br/>
-            MA20: ${maSeries[0]?.data[dataPointIndex]?.y?.toFixed(2) || "-"}
-          </div>
-        `;
-      },
-    },
-  };
 
   return (
     <div className="bg-white p-4 rounded-xl shadow-lg">
+      <h2 className="text-lg font-bold mb-3">{symbol} Realtime Candlestick</h2>
       <ReactApexChart
-        options={options}
-        series={[
-          { name: "Candlestick", data: candles },
-          ...maSeries, // overlay đường MA
-        ]}
+        options={{
+          chart: { type: "candlestick", height: 400, animations: { enabled: false } },
+          xaxis: { type: "datetime" },
+          yaxis: { tooltip: { enabled: true } },
+        }}
+        series={series}
         type="candlestick"
         height={400}
       />
