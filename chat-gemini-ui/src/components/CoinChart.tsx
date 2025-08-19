@@ -66,7 +66,7 @@ export default function CoinChart({ symbol = "BTCUSDT" }: { symbol?: string }) {
     },
     tooltip: {
       shared: true,
-      custom: function ({ series, seriesIndex, dataPointIndex, w }) {
+      custom: function ({ dataPointIndex }) {
         return `
           <div style="padding:5px;">
             <b>${new Date(

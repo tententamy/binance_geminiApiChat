@@ -2,9 +2,11 @@ import { useState } from "react";
 import TopCoins from "./components/TopCoins";
 import CoinChart from "./components/CoinChart";
 import ChatWidget from "./components/ChatWidget";
+import LineChart from "./components/LineChart";
 
 export default function App() {
   const [symbol, setSymbol] = useState("BTCUSDT");
+  const [mode, setMode] = useState<"candle" | "line">("candle"); // ✅ thêm state để chọn chart
 
   return (
     <div className="w-screen h-screen flex flex-col bg-gray-100">
@@ -32,10 +34,44 @@ export default function App() {
           <TopCoins />
         </aside>
 
-        {/* Main chart full screen */}
-        <main className="flex-1 p-4">
-          <CoinChart symbol={symbol} />
-        </main>
+        {/* Main chart */}
+        <div className="flex-1 bg-white shadow-lg rounded-xl m-4 p-4 flex flex-col">
+          {/* Chart header + tab */}
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="font-bold text-lg">{symbol} Chart</h2>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setMode("candle")}
+                className={`px-3 py-1 rounded transition ${
+                  mode === "candle"
+                    ? "bg-blue-600 text-white"
+                    : "border border-gray-300 bg-gray-100"
+                }`}
+              >
+                Candlestick
+              </button>
+              <button
+                onClick={() => setMode("line")}
+                className={`px-3 py-1 rounded transition ${
+                  mode === "line"
+                    ? "bg-blue-600 text-white"
+                    : "border border-gray-300 bg-gray-100"
+                }`}
+              >
+                Line
+              </button>
+            </div>
+          </div>
+
+          {/* Chart render */}
+          <div className="flex-1">
+            {mode === "candle" ? (
+              <CoinChart symbol={symbol} />
+            ) : (
+              <LineChart symbol={symbol} />
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Chat widget */}

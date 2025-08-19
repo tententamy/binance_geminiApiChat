@@ -20,3 +20,20 @@ export async function getTopCoins(limit = 10) {
     .slice(0, limit);
   return sorted;
 }
+
+
+export async function getKlines(symbol: string, interval: string = "1h") {
+  const url = `${BASE_URL}/klines?symbol=${symbol}&interval=${interval}&limit=100`;
+  const res = await axios.get(url);
+
+  // Binance trả: [time, open, high, low, close, volume,...]
+  return res.data.map((d: any) => ({
+    time: d[0],
+    open: parseFloat(d[1]),
+    high: parseFloat(d[2]),
+    low: parseFloat(d[3]),
+    close: parseFloat(d[4]),
+    volume: parseFloat(d[5]),
+  }));
+}
+
