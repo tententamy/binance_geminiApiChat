@@ -1,0 +1,12 @@
+{
+  "name": "chat-bot-root",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm --prefix chat-gemini-bot run dev\" \"npm --prefix chat-gemini-ui run dev\"",
+    "dev:backend": "npm --prefix chat-gemini-bot run dev",
+    "dev:frontend": "npm --prefix chat-gemini-ui run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
+  }
+}

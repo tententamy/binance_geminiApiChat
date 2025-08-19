@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    // File Layout
+    "rootDir": "./src",
+    "outDir": "./dist",
+
+    // Environment Settings
+    "target": "ESNext",            // build JS mới nhất
+    "module": "CommonJS",            // dùng ESM
+    "moduleResolution": "Node",    // resolve kiểu Node
+    "lib": ["esnext"],
+    "types": ["node"],             // để có type Node.js
+
+    // Other Outputs
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+
+    // Type checking
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "esModuleInterop": true,       // cho phép import default từ CJS
+    "skipLibCheck": true,
+
+    // Module syntax
+    "isolatedModules": true
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}
